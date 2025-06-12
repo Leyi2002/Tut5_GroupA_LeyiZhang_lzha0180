@@ -1,3 +1,8 @@
+/****************** Preload audio file ******************/
+function preload() {
+  song = loadSound('assets/audio.mp3');
+}
+
 /****************** Define global variables ******************/
 const baseWidth = 1000;
 const baseHeight = 600;
@@ -7,6 +12,9 @@ let dotSpacing = 24; // Dot spacing in the Sensing-Feeling pattern
 let dotRadius = 2; // Dot radius in the Sensing-Feeling pattern
 // Store original triangle positions for responsive design
 let relativeTriangles = [];
+
+let song;
+let amplitude;
 
 
 /************** Color palrtte and random function **************/
@@ -341,21 +349,41 @@ const arcs_bottomright = [
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  noLoop();
-  generateStructuredTriangles(6, 8); // Rule grid structure
+  angleMode(DEGREES);
+  
+  // 只有在音频成功加载时才播放
+  if (song) {
+    song.loop();
+    amplitude = new p5.Amplitude();
+  }
+  
+  generateStructuredTriangles(6, 8);
   updateTriangles();
 }
 
-
-/**************************** Main drawing function ****************************/
 function draw() {
   background(250, 247, 235);
+  
+  let scaleFactor = 1;
+  let shake = 0;
+  
+  // Only get audio data when the audio is available.
+  if (amplitude) {
+    let level = amplitude.getLevel();
+    scaleFactor = map(level, 0, 0.5, 1, 1.3);
+    shake = map(level, 0, 0.5, 0, 10);
+  }
+
   // Calculate the horizontal and vertical scaling ratios to ensure that the graphic adapts to the screen size.
   // width and height are the current width and height of the canvas.
   // baseWidth and baseHeight are the original dimensions used as a reference during design.
   let scaleX = width / baseWidth;
   let scaleY = height / baseHeight;
 
+  push();
+  translate(random(-shake, shake), random(-shake, shake));
+  scale(scaleFactor);
+  
   //-----------------------Top left-----------------------//
   drawTopLeft(scaleX, scaleY);
 
@@ -363,7 +391,7 @@ function draw() {
   drawTopRight(scaleX, scaleY);
 
   //----------------------Bottom left----------------------//
-  drawBottomLeft(scaleX, scaleY);
+  drawBottomLeft();
 
   //----------------------Bottom right---------------------//
   drawBottomRight(scaleX, scaleY);
@@ -374,8 +402,14 @@ function draw() {
   //-------------Draw coordinate axes and text------------//
   drawCoordinates();
   
+  pop();
 }
 
+function mousePressed() {
+  if (getAudioContext().state !== 'running') {
+    getAudioContext().resume();
+  }
+}
 
 
 /********************************* Function zone 1 *********************************/
@@ -798,7 +832,6 @@ function drawGradientTriangle(p1, p2, p3, c1, c2) {
     line(xa, ya, xb, yb); // Draw the triangle with the color
   }
 }
-
 
 //---------------- Function: draw bottom right shapes ----------------//
 function drawBottomRight(scaleX, scaleY) {
