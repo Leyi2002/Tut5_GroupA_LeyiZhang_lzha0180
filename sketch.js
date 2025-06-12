@@ -31,6 +31,13 @@ let topRightShake = 0; // Shake for top-right area only
 let bottomRightScaleFactor = 1; // Scale factor for bottom-right area only
 let bottomRightShake = 0; // Shake for bottom-right area only
 
+// Volume and pan control variables
+let volume = 1.0; // Start at full volume
+let pan = 0.0; // Start at center
+
+// Button variables
+let buttonTopLeft, buttonTopRight, buttonBottomRight;
+
 /************** Color palrtte and random function **************/
 const palette = [
   [36, 149, 248],  //blue 1
@@ -368,13 +375,31 @@ function setup() {
   // Initialize amplitude but don't play audio automatically
   if (song) {
     amplitude = new p5.Amplitude();
+    amplitude.setInput(song);
   }
   if (song_topright) {
     amplitude_topright = new p5.Amplitude();
+    amplitude_topright.setInput(song_topright);
   }
   if (song_bottomright) {
     amplitude_bottomright = new p5.Amplitude();
+    amplitude_bottomright.setInput(song_bottomright);
   }
+  
+  // Create buttons for each audio area
+  buttonTopLeft = createButton('Play/Stop Sound');
+  buttonTopRight = createButton('Play/Stop Sound');
+  buttonBottomRight = createButton('Play/Stop Sound');
+  
+  // Position buttons at the bottom center of each area
+  buttonTopLeft.position(width / 4 - 50, height / 2 - 30);
+  buttonTopRight.position(3 * width / 4 - 50, height / 2 - 30);
+  buttonBottomRight.position(3 * width / 4 - 50, 3 * height / 4 + 200);
+  
+  // Set button actions
+  buttonTopLeft.mousePressed(playPauseTopLeft);
+  buttonTopRight.mousePressed(playPauseTopRight);
+  buttonBottomRight.mousePressed(playPauseBottomRight);
   
   generateStructuredTriangles(6, 8);
   updateTriangles();
@@ -439,52 +464,76 @@ function draw() {
 }
 
 function mousePressed() {
-  // Check if mouse is in the top-left area (first quadrant)
-  if (mouseX < width / 2 && mouseY < height / 2) {
-    if (getAudioContext().state !== 'running') {
-      getAudioContext().resume();
-    }
-    
-    if (song && !isAudioPlaying) {
-      song.loop();
-      isAudioPlaying = true;
-    } else if (song && isAudioPlaying) {
-      song.stop();
-      isAudioPlaying = false;
-    }
-  }
-  
-  // Check if mouse is in the top-right area (second quadrant)
-  if (mouseX > width / 2 && mouseY < height / 2) {
-    if (getAudioContext().state !== 'running') {
-      getAudioContext().resume();
-    }
-    
-    if (song_topright && !isAudioTopRightPlaying) {
-      song_topright.loop();
-      isAudioTopRightPlaying = true;
-    } else if (song_topright && isAudioTopRightPlaying) {
-      song_topright.stop();
-      isAudioTopRightPlaying = false;
-    }
-  }
-  
-  // Check if mouse is in the bottom-right area (fourth quadrant)
-  if (mouseX > width / 2 && mouseY > height / 2) {
-    if (getAudioContext().state !== 'running') {
-      getAudioContext().resume();
-    }
-    
-    if (song_bottomright && !isAudioBottomRightPlaying) {
-      song_bottomright.loop();
-      isAudioBottomRightPlaying = true;
-    } else if (song_bottomright && isAudioBottomRightPlaying) {
-      song_bottomright.stop();
-      isAudioBottomRightPlaying = false;
-    }
+  // Remove area-based audio control - now only buttons control audio
+  // Keep the audio context resume functionality
+  if (getAudioContext().state !== 'running') {
+    getAudioContext().resume();
   }
 }
 
+function playPauseTopLeft() {
+  if (getAudioContext().state !== 'running') {
+    getAudioContext().resume();
+  }
+  
+  if (song && !isAudioPlaying) {
+    song.loop();
+    isAudioPlaying = true;
+  } else if (song && isAudioPlaying) {
+    song.stop();
+    isAudioPlaying = false;
+  }
+}
+
+function playPauseTopRight() {
+  if (getAudioContext().state !== 'running') {
+    getAudioContext().resume();
+  }
+  
+  if (song_topright && !isAudioTopRightPlaying) {
+    song_topright.loop();
+    isAudioTopRightPlaying = true;
+  } else if (song_topright && isAudioTopRightPlaying) {
+    song_topright.stop();
+    isAudioTopRightPlaying = false;
+  }
+}
+
+function playPauseBottomRight() {
+  if (getAudioContext().state !== 'running') {
+    getAudioContext().resume();
+  }
+  
+  if (song_bottomright && !isAudioBottomRightPlaying) {
+    song_bottomright.loop();
+    isAudioBottomRightPlaying = true;
+  } else if (song_bottomright && isAudioBottomRightPlaying) {
+    song_bottomright.stop();
+    isAudioBottomRightPlaying = false;
+  }
+}
+
+function mouseMoved() {
+  // Map the mouseY to a volume value between 0 and 1 (clamped)
+  volume = map(mouseY, 0, height, 1, 0, true);
+  
+  // Map the mouseX to a pan value between -1 and 1 (clamped)
+  pan = map(mouseX, 0, width, -1, 1, true);
+  
+  // Apply volume and pan to all playing audio
+  if (song && isAudioPlaying) {
+    song.setVolume(volume);
+    song.pan(pan);
+  }
+  if (song_topright && isAudioTopRightPlaying) {
+    song_topright.setVolume(volume);
+    song_topright.pan(pan);
+  }
+  if (song_bottomright && isAudioBottomRightPlaying) {
+    song_bottomright.setVolume(volume);
+    song_bottomright.pan(pan);
+  }
+}
 
 /********************************* Function zone 1 *********************************/
 //---- Function：draw dots inside the rectangle and scale to fit. ----//
@@ -1051,11 +1100,51 @@ function drawCoordinates() {
   // Vertical lines：Thinking and Feeling
   text('Thinking', width / 2, margin / 2);
   text('Feeling', width / 2, height - margin / 2);
+  
+  // Draw volume and pan control info
+  textAlign(LEFT, TOP);
+  textSize(16);
+  fill(50);
+  text('Volume: ' + volume.toFixed(2), 10, 10);
+  text('Pan: ' + pan.toFixed(2), 10, 30);
+  
+  // Draw visual indicator for volume and pan
+  noFill();
+  stroke(100);
+  strokeWeight(2);
+  // Volume indicator (vertical bar)
+  rect(10, 50, 20, 100);
+  fill(100);
+  noStroke();
+  let volumeHeight = map(volume, 0, 1, 0, 100);
+  rect(10, 150 - volumeHeight, 20, volumeHeight);
+  
+  // Pan indicator (horizontal bar)
+  noFill();
+  stroke(100);
+  strokeWeight(2);
+  rect(40, 50, 100, 20);
+  fill(100);
+  noStroke();
+  let panWidth = map(pan, -1, 1, 0, 100);
+  rect(40, 50, panWidth, 20);
 }
 
 //---------------- Function: resize canvas ----------------//
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  
+  // Update button positions when window is resized
+  if (buttonTopLeft) {
+    buttonTopLeft.position(width / 4 - 50, height / 2 - 30);
+  }
+  if (buttonTopRight) {
+    buttonTopRight.position(3 * width / 4 - 50, height / 2 - 30);
+  }
+  if (buttonBottomRight) {
+    buttonBottomRight.position(3 * width / 4 - 50, 3 * height / 4 - 30);
+  }
+  
   generateStructuredTriangles(6, 8);
   updateTriangles();// Update the triangles positions of the Sensing-Feeling quadrant visualization (left bottom)
   redraw();
