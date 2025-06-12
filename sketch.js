@@ -1,6 +1,8 @@
 /****************** Preload audio file ******************/
 function preload() {
   song = loadSound('assets/audio.mp3');
+  song_topright = loadSound('assets/audio_topright.mp3');
+  song_bottomright = loadSound('assets/audio_bottomleft.mp3');
 }
 
 /****************** Define global variables ******************/
@@ -14,10 +16,20 @@ let dotRadius = 2; // Dot radius in the Sensing-Feeling pattern
 let relativeTriangles = [];
 
 let song;
+let song_topright;
+let song_bottomright;
 let amplitude;
+let amplitude_topright;
+let amplitude_bottomright;
 let isAudioPlaying = false; // Track if audio is playing
+let isAudioTopRightPlaying = false; // Track if top-right audio is playing
+let isAudioBottomRightPlaying = false; // Track if bottom-right audio is playing
 let topLeftScaleFactor = 1; // Scale factor for top-left area only
 let topLeftShake = 0; // Shake for top-left area only
+let topRightScaleFactor = 1; // Scale factor for top-right area only
+let topRightShake = 0; // Shake for top-right area only
+let bottomRightScaleFactor = 1; // Scale factor for bottom-right area only
+let bottomRightShake = 0; // Shake for bottom-right area only
 
 /************** Color palrtte and random function **************/
 const palette = [
@@ -357,6 +369,12 @@ function setup() {
   if (song) {
     amplitude = new p5.Amplitude();
   }
+  if (song_topright) {
+    amplitude_topright = new p5.Amplitude();
+  }
+  if (song_bottomright) {
+    amplitude_bottomright = new p5.Amplitude();
+  }
   
   generateStructuredTriangles(6, 8);
   updateTriangles();
@@ -373,6 +391,26 @@ function draw() {
   } else {
     topLeftScaleFactor = 1;
     topLeftShake = 0;
+  }
+  
+  // Only get audio data for top-right when the audio is playing
+  if (amplitude_topright && isAudioTopRightPlaying) {
+    let level = amplitude_topright.getLevel();
+    topRightScaleFactor = map(level, 0, 0.5, 1, 1.3);
+    topRightShake = map(level, 0, 0.5, 0, 10);
+  } else {
+    topRightScaleFactor = 1;
+    topRightShake = 0;
+  }
+  
+  // Only get audio data for bottom-right when the audio is playing
+  if (amplitude_bottomright && isAudioBottomRightPlaying) {
+    let level = amplitude_bottomright.getLevel();
+    bottomRightScaleFactor = map(level, 0, 0.5, 1, 1.3);
+    bottomRightShake = map(level, 0, 0.5, 0, 10);
+  } else {
+    bottomRightScaleFactor = 1;
+    bottomRightShake = 0;
   }
 
   // Calculate the horizontal and vertical scaling ratios to ensure that the graphic adapts to the screen size.
@@ -413,6 +451,36 @@ function mousePressed() {
     } else if (song && isAudioPlaying) {
       song.stop();
       isAudioPlaying = false;
+    }
+  }
+  
+  // Check if mouse is in the top-right area (second quadrant)
+  if (mouseX > width / 2 && mouseY < height / 2) {
+    if (getAudioContext().state !== 'running') {
+      getAudioContext().resume();
+    }
+    
+    if (song_topright && !isAudioTopRightPlaying) {
+      song_topright.loop();
+      isAudioTopRightPlaying = true;
+    } else if (song_topright && isAudioTopRightPlaying) {
+      song_topright.stop();
+      isAudioTopRightPlaying = false;
+    }
+  }
+  
+  // Check if mouse is in the bottom-right area (fourth quadrant)
+  if (mouseX > width / 2 && mouseY > height / 2) {
+    if (getAudioContext().state !== 'running') {
+      getAudioContext().resume();
+    }
+    
+    if (song_bottomright && !isAudioBottomRightPlaying) {
+      song_bottomright.loop();
+      isAudioBottomRightPlaying = true;
+    } else if (song_bottomright && isAudioBottomRightPlaying) {
+      song_bottomright.stop();
+      isAudioBottomRightPlaying = false;
     }
   }
 }
@@ -531,7 +599,8 @@ function drawTopRight(scaleX, scaleY) {
   push();
   translate(width, 0); // Move the origin to the right side
   scale(-1, 1);        // Flip horizontally
-  // Draw background shapes
+  
+  // Draw background shapes (static, no audio effects)
   for (let i = 0; i < rects_topright_background_yellow.length; i++) {
     let r = rects_topright_background_yellow[i];
     fill(makeRGB(245, 202, 37));
@@ -554,26 +623,12 @@ function drawTopRight(scaleX, scaleY) {
       r.h * scaleY
     );
   }
-  pop();
-  for (let i = 0; i < rects_topright_background_white.length; i++) {
-    let r = rects_topright_background_white[i];
-    let fillColor = makeRGB(248, 249, 251);
-    fill(fillColor);
-    noStroke();
-    let x = width - (r.x + r.w) * scaleX;
-    let y = r.y * scaleY;
-    let w = r.w * scaleX;
-    let h = r.h * scaleY;
-    rect(x, y, w, h);
-    if (r.dots) {
-      drawDotsInRect({ x, y, w, h }, scaleX, scaleY);
-    }
-  }
-
-  // Draw buildings
+  
+  // Draw buildings with audio effects (only rectangles)
   push();
-  translate(width, 0);
-  scale(-1, 1);
+  translate(random(-topRightShake, topRightShake), random(-topRightShake, topRightShake));
+  scale(topRightScaleFactor);
+  
   for (let i = 0; i < rects_topright_building_red.length; i++) {
     let r = rects_topright_building_red[i];
     fill(makeRGB(217, 16, 9));
@@ -607,8 +662,10 @@ function drawTopRight(scaleX, scaleY) {
       r.h * scaleY
     );
   }
-
-  //Draw lines
+  
+  pop(); // End audio effects for rectangles
+  
+  //Draw lines (static, no audio effects)
   for (let i = 0; i < lines_topright_1.length; i++) {
     let l = lines_topright_1[i];
     stroke(makeRGB(0, 0, 0));
@@ -627,7 +684,24 @@ function drawTopRight(scaleX, scaleY) {
     strokeWeight(2);
     line(l.x1 * scaleX, l.y1 * scaleY, l.x2 * scaleX, l.y2 * scaleY);
   }
-  pop();
+  
+  pop(); // End flip transform
+  
+  // Draw white background rectangles (static, no audio effects)
+  for (let i = 0; i < rects_topright_background_white.length; i++) {
+    let r = rects_topright_background_white[i];
+    let fillColor = makeRGB(248, 249, 251);
+    fill(fillColor);
+    noStroke();
+    let x = width - (r.x + r.w) * scaleX;
+    let y = r.y * scaleY;
+    let w = r.w * scaleX;
+    let h = r.h * scaleY;
+    rect(x, y, w, h);
+    if (r.dots) {
+      drawDotsInRect({ x, y, w, h }, scaleX, scaleY);
+    }
+  }
 }
 
 //--------------------- Function: draw bottom left triangles-----------------------//
@@ -859,6 +933,12 @@ function drawBottomRight(scaleX, scaleY) {
    
   translate(width, height); // Move the origin to the bottom right corner.
   scale(-1, -1);            // Horizontal + vertical flip.
+  
+  // Draw rectangles and circles with audio effects
+  push();
+  translate(random(-bottomRightShake, bottomRightShake), random(-bottomRightShake, bottomRightShake));
+  scale(bottomRightScaleFactor);
+  
   for (let i = 0; i < circles_bottomright_yellow.length; i++) {
     let c = circles_bottomright_yellow[i];
     fill(c.color);
@@ -899,6 +979,10 @@ function drawBottomRight(scaleX, scaleY) {
     let r = c.r * ((scaleX + scaleY) / 2);
     ellipse(x, y, r * 2, r * 2);
   }
+  
+  pop(); // End audio effects for rectangles and circles
+  
+  // Draw lines (static, no audio effects)
   for (let i = 0; i < lines_bottomright.length; i++) {
     let l = lines_bottomright[i];
     stroke(makeRGB(17, 99, 247));
