@@ -15,7 +15,9 @@ let relativeTriangles = [];
 
 let song;
 let amplitude;
-
+let isAudioPlaying = false; // Track if audio is playing
+let topLeftScaleFactor = 1; // Scale factor for top-left area only
+let topLeftShake = 0; // Shake for top-left area only
 
 /************** Color palrtte and random function **************/
 const palette = [
@@ -351,9 +353,8 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   angleMode(DEGREES);
   
-  // 只有在音频成功加载时才播放
+  // Initialize amplitude but don't play audio automatically
   if (song) {
-    song.loop();
     amplitude = new p5.Amplitude();
   }
   
@@ -364,14 +365,14 @@ function setup() {
 function draw() {
   background(250, 247, 235);
   
-  let scaleFactor = 1;
-  let shake = 0;
-  
-  // Only get audio data when the audio is available.
-  if (amplitude) {
+  // Only get audio data when the audio is playing
+  if (amplitude && isAudioPlaying) {
     let level = amplitude.getLevel();
-    scaleFactor = map(level, 0, 0.5, 1, 1.3);
-    shake = map(level, 0, 0.5, 0, 10);
+    topLeftScaleFactor = map(level, 0, 0.5, 1, 1.3);
+    topLeftShake = map(level, 0, 0.5, 0, 10);
+  } else {
+    topLeftScaleFactor = 1;
+    topLeftShake = 0;
   }
 
   // Calculate the horizontal and vertical scaling ratios to ensure that the graphic adapts to the screen size.
@@ -380,10 +381,6 @@ function draw() {
   let scaleX = width / baseWidth;
   let scaleY = height / baseHeight;
 
-  push();
-  translate(random(-shake, shake), random(-shake, shake));
-  scale(scaleFactor);
-  
   //-----------------------Top left-----------------------//
   drawTopLeft(scaleX, scaleY);
 
@@ -401,13 +398,22 @@ function draw() {
 
   //-------------Draw coordinate axes and text------------//
   drawCoordinates();
-  
-  pop();
 }
 
 function mousePressed() {
-  if (getAudioContext().state !== 'running') {
-    getAudioContext().resume();
+  // Check if mouse is in the top-left area (first quadrant)
+  if (mouseX < width / 2 && mouseY < height / 2) {
+    if (getAudioContext().state !== 'running') {
+      getAudioContext().resume();
+    }
+    
+    if (song && !isAudioPlaying) {
+      song.loop();
+      isAudioPlaying = true;
+    } else if (song && isAudioPlaying) {
+      song.stop();
+      isAudioPlaying = false;
+    }
   }
 }
 
@@ -450,6 +456,7 @@ function drawLinesInCircle(circleObj) {
 /************************ Function zone 2 - Drawing four parts ************************/
 //---------------- Function: draw top left shapes ----------------//
 function drawTopLeft(scaleX, scaleY) {
+  // Draw rectangles
   for (let i = 0; i < rects_topleft.length; i++) {
     let r = rects_topleft[i];
     fill(r.color);
@@ -464,6 +471,7 @@ function drawTopLeft(scaleX, scaleY) {
       drawDotsInRect({ x, y, w, h }, scaleX, scaleY);
     }
   }
+  
   // Draw triangles
   for (let i = 0; i < triangles_topleft.length; i++) {
     let t = triangles_topleft[i];
@@ -478,7 +486,28 @@ function drawTopLeft(scaleX, scaleY) {
     }
     endShape(CLOSE);
   }
-  // Draw circles
+  
+  // Draw lines
+  push();
+  translate(random(-topLeftShake, topLeftShake), random(-topLeftShake, topLeftShake));
+  scale(topLeftScaleFactor);
+  for (let i = 0; i < lines_topleft.length; i++) {
+    let l = lines_topleft[i];
+    stroke(l.color);
+    strokeWeight(l.weight * ((scaleX + scaleY) / 2));
+    let x1 = l.x1 * scaleX;
+    let y1 = l.y1 * scaleY;
+    let x2 = l.x2 * scaleX;
+    let y2 = l.y2 * scaleY;
+    line(x1, y1, x2, y2);
+  }
+  pop();
+  
+  // Draw circles with audio effects
+  push();
+  translate(random(-topLeftShake, topLeftShake), random(-topLeftShake, topLeftShake));
+  scale(topLeftScaleFactor);
+  
   for (let i = 0; i < circles_topleft.length; i++) {
     let c = circles_topleft[i];
     fill(c.color);
@@ -493,17 +522,8 @@ function drawTopLeft(scaleX, scaleY) {
       arc(x, y, r * 2, r * 2, c.startAngle, c.endAngle, PIE);
     }
   }
-  // Draw lines
-  for (let i = 0; i < lines_topleft.length; i++) {
-    let l = lines_topleft[i];
-    stroke(l.color);
-    strokeWeight(l.weight * ((scaleX + scaleY) / 2));
-    let x1 = l.x1 * scaleX;
-    let y1 = l.y1 * scaleY;
-    let x2 = l.x2 * scaleX;
-    let y2 = l.y2 * scaleY;
-    line(x1, y1, x2, y2);
-  }
+  
+  pop();
 }
 
 //---------------- Function: draw top right shapes ----------------//
